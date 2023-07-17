@@ -7,7 +7,8 @@
 import random
 
 import torch
-from utils import DTYPE2STR, benchmark_main_helper2, product_dict
+
+from xformers.benchmarks.utils import benchmark_main_helper, DTYPE2STR, benchmark_main_helper2, product_dict
 
 import xformers.ops as xops
 
