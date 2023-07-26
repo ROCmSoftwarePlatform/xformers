@@ -204,12 +204,22 @@ def get_flash_attention_extensions(cuda_version: int, extra_compile_args):
         )
     ]
 
+def rename_cpp_cu(cpp_files):
+    for entry in cpp_files:
+        shutil.copy(entry, os.path.splitext(entry)[0] + '.cu')
 
 def get_extensions():
     extensions_dir = os.path.join("xformers", "csrc")
 
-    sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"), recursive=True)
-    source_cuda = glob.glob(os.path.join(extensions_dir, "**", "*.cu"), recursive=True)
+    sources = glob.glob(os.path.join(extensions_dir, "attention", "*.cpp"), recursive=False)
+    sources += glob.glob(os.path.join(extensions_dir, "attention", "autograd", "*.cpp"), recursive=True)
+    sources += glob.glob(os.path.join(extensions_dir, "attention", "cpu", "*.cpp"), recursive=True)
+    sources += glob.glob(os.path.join(extensions_dir, "indexing", "*.cpp"), recursive=True)
+    sources += glob.glob(os.path.join(extensions_dir, "swiglu", "*.cpp"), recursive=True)
+    
+    source_cuda = glob.glob(os.path.join(extensions_dir, "*.cu"), recursive=False)
+    source_cuda += glob.glob(os.path.join(extensions_dir, "attention", "cuda", "*.cu"), recursive=True)
+    source_hip = glob.glob(os.path.join(extensions_dir, "attention", "hip_fmha", "*.cpp"), recursive=True) 
 
     sputnik_dir = os.path.join(this_dir, "third_party", "sputnik")
     cutlass_dir = os.path.join(this_dir, "third_party", "cutlass", "include")
@@ -288,6 +298,35 @@ def get_extensions():
             "--ptxas-options=-O2",
             "--ptxas-options=-allow-expensive-optimizations=true",
         ]
+    elif torch.cuda.is_available() and torch.version.hip: 
+       rename_cpp_cu(source_hip)
+       source_hip_cu = glob.glob(os.path.join(extensions_dir, "attention", "hip_fmha", "*.cu"), recursive=True) 
+       extension = CUDAExtension
+       sources += source_hip_cu
+       include_dirs += [ Path(this_dir) / 'xformers' / 'csrc' / 'attention' / 'hip_fmha', 
+                         Path(this_dir) / 'third_party' / 'composable_kernel' / 'include',
+                         Path(this_dir) / 'third_party' / 'composable_kernel' / 'include' / 'ck' ,
+                         Path(this_dir) / 'third_party' / 'composable_kernel' / 'include' / 'ck' / 'tensor_operation' / 'gpu' / 'device',
+                         Path(this_dir) / 'third_party' / 'composable_kernel' / 'include' / 'ck' / 'tensor_operation' / 'gpu' / 'device' / 'impl',
+                         Path(this_dir) / 'third_party' / 'composable_kernel' / 'include' / 'ck' / 'tensor_operation' / 'gpu' / 'element',
+                         Path(this_dir) / 'third_party' / 'composable_kernel' / 'library' / 'include' / 'ck' / 'libary' / 'utility', 
+                       ] 
+       generator_flag = []
+       cc_flag = ["-DBUILD_PYTHON_PACKAGE"]
+       extra_compile_args={
+            "cxx": ["-O3", "-std=c++17"] + generator_flag,
+            "nvcc":
+                [
+                    "-O3",
+                    "-std=c++17",
+                    "--offload-arch=gfx90a",
+                    "-U__CUDA_NO_HALF_OPERATORS__",
+                    "-U__CUDA_NO_HALF_CONVERSIONS__",
+                ]
+                + generator_flag
+                + cc_flag
+            ,
+       } 
 
     ext_modules.append(
         extension(
@@ -317,7 +356,6 @@ def get_extensions():
             ]
         },
     }
-
 
 class clean(distutils.command.clean.clean):  # type: ignore
     def run(self):
