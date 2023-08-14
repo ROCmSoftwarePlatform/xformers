@@ -7,7 +7,11 @@ from typing import Any, Optional, Sequence, Tuple, Type, Union
 
 import torch
 
+<<<<<<< HEAD
 from . import cutlass, decoder, flash, small_k, triton, triton_splitk
+=======
+from . import cutlass, flash, small_k, triton, ck
+>>>>>>> c3d0fdf (xforemer fmha ops for ck)
 from .attn_bias import AttentionBias, BlockDiagonalMask, LowerTriangularMask
 from .common import (
     AttentionBwOpBase,
@@ -29,7 +33,7 @@ MemoryEfficientAttentionTritonFwdFlashBwOp = (triton.FwOp, flash.BwOp)
 MemoryEfficientAttentionFlashAttentionOp = (flash.FwOp, flash.BwOp)
 MemoryEfficientAttentionOp = (small_k.FwOp, small_k.BwOp)
 TritonFlashAttentionOp = (triton.FwOp, triton.BwOp)
-
+MemoryEfficientAttentionCkOp = (ck.FwOp, ck.BwOp) 
 
 class _fMHA(torch.autograd.Function):
     @staticmethod
@@ -444,4 +448,5 @@ __all__ = [
     "memory_efficient_attention",
     "ALL_FW_OPS",
     "ALL_BW_OPS",
+    "MemoryEfficientAttentionCkOp",
 ]
