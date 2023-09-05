@@ -478,6 +478,7 @@ def benchmark_run_and_compare(
             .replace(" ", "_")
             .replace("-", "_")
             .replace(".", "_")
+            .replace("/", "_")
         )
     except (RuntimeError, AssertionError):  # No GPU
         env = "cpu"
