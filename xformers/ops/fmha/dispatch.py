@@ -8,7 +8,7 @@ import textwrap
 from collections import deque
 from typing import List, Sequence, Type, TypeVar
 
-from . import attn_bias, cutlass, decoder, flash, small_k, triton, triton_splitk
+from . import attn_bias, cutlass, decoder, flash, small_k, triton, triton_splitk, ck
 from .common import AttentionBwOpBase, AttentionFwOpBase, Inputs
 
 
@@ -71,6 +71,7 @@ def _dispatch_fw_priority_list(
             flash.FwOp,
             triton.FwOp,
             cutlass.FwOp,
+            ck.FwOp,
             small_k.FwOp,
         ]
     )
