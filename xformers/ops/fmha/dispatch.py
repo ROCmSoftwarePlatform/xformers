@@ -71,7 +71,6 @@ def _dispatch_fw_priority_list(
             flash.FwOp,
             triton.FwOp,
             cutlass.FwOp,
-            ck.FwOp,
             small_k.FwOp,
         ]
     )
