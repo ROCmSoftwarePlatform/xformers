@@ -8,3 +8,6 @@
 	path = third_party/composable_kernel
 	url = https://github.com/ROCmSoftwarePlatform/composable_kernel.git
 	branch = mha-train-develop
+[submodule "third_party/composable_kernel_tiled"]
+	path = third_party/composable_kernel_tiled
+	url = https://github.com/asroy/ck_tile.git
