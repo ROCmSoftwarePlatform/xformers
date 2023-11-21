@@ -99,26 +99,23 @@ class AttentionDecodingFlashDecoding:
         try:
             xops.memory_efficient_attention_forward(self.q, self.k, self.v, op=self.OP)
         except RuntimeError as e:
-            print(e.__cause__)
+            print(f"Runtime error: {e}")
 
 
 class AttentionDecodingSplitKV(AttentionDecodingFlashDecoding):
     OP = xops.fmha.triton_splitk.FwOp
 
 class AttentionDecodingCK(AttentionDecodingFlashDecoding):
-    label = "ck"
 
     OP = xops.fmha.ck.FwOp
 
 
 class AttentionDecodingCKDecoder(AttentionDecodingFlashDecoding):
-    label = "ck_decoder"
 
     OP = xops.fmha.ck_decoder.FwOp
 
 
 class AttentionDecodingPyTorchRepeat(AttentionDecodingFlashDecoding):
-    label = "pytorch"
 
     def fw(self) -> None:
         B, Mq, Mkv, Hq, Hkv, K = self.shapes
@@ -134,7 +131,7 @@ BENCHMARKS = {
     "pytorch": AttentionDecodingPyTorchRepeat,
     #"flash-decoding": AttentionDecodingFlashDecoding,
     # "triton_splitK": AttentionDecodingSplitKV,
-    # "ck": AttentionDecodingCK,
+    "ck": AttentionDecodingCK,
     "ck-decoder": AttentionDecodingCKDecoder,
 }
 
