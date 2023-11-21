@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 
+from ctypes import Union
 from typing import Any
 
 import torch
@@ -17,14 +18,9 @@ device = torch.device("cuda")
 
 
 CASES = [
-    dict(B=max(1, 2 ** (16 - i)), Mq=1, Mkv=2**i, Hq=16, Hkv=1, K=128)
-    for i in range(8, 18)
-]
-# + [
-#     dict(B=max(1, 2 ** (16 - i)), Mq=1, Mkv=2**i, Hq=16, Hkv=2, K=128)
-#     for i in range(8, 18)
-# ]
-
+    dict(B=max(1, 2 ** (16 - i)), Mq=1, Mkv=2**i, Hq=16, Hkv=h_kv, K=128)
+    for i in range(8, 18) for h_kv in (1, 2)
+] 
 
 def _setup_test(
     functions, fw: bool = False, bw: bool = False, cuda_graph: bool = True, **kwargs
@@ -98,8 +94,8 @@ class AttentionDecodingFlashDecoding:
     def fw(self) -> None:
         try:
             xops.memory_efficient_attention_forward(self.q, self.k, self.v, op=self.OP)
-        except RuntimeError as e:
-            print(f"Runtime error: {e}")
+        except (RuntimeError, ValueError) as e:
+            print(f"Error: {e}")
 
 
 class AttentionDecodingSplitKV(AttentionDecodingFlashDecoding):
