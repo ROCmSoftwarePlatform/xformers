@@ -7,15 +7,7 @@ from typing import Any, Optional, Sequence, Tuple, Type, Union
 
 import torch
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-from . import cutlass, decoder, flash, small_k, triton, triton_splitk
-=======
-from . import cutlass, flash, small_k, triton, ck
->>>>>>> c3d0fdf (xforemer fmha ops for ck)
-=======
-from . import cutlass, decoder, flash, small_k, triton, ck, ck_decoder
->>>>>>> 88d631b (add cpp boilerplate for the decoder op)
+from . import cutlass, decoder, flash, small_k, triton, triton_splitk, ck, ck_decoder
 from .attn_bias import AttentionBias, BlockDiagonalMask, LowerTriangularMask
 from .common import (
     AttentionBwOpBase,
