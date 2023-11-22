@@ -308,6 +308,7 @@ def get_extensions():
         flash_extensions = get_flash_attention_extensions(
             cuda_version=cuda_version, extra_compile_args=extra_compile_args
         )
+
         if flash_extensions:
             flash_version = get_flash_version()
         ext_modules += flash_extensions

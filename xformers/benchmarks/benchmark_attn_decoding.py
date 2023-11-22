@@ -4,7 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from ctypes import Union
 from typing import Any
 
 import torch
@@ -100,6 +99,7 @@ class AttentionDecodingFlashDecoding:
 
 class AttentionDecodingSplitKV(AttentionDecodingFlashDecoding):
     OP = xops.fmha.triton_splitk.FwOp
+
 
 class AttentionDecodingCK(AttentionDecodingFlashDecoding):
 
