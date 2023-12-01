@@ -10,5 +10,5 @@
 	url = https://github.com/Dao-AILab/flash-attention.git
 [submodule "third_party/composable_kernel_tiled"]
 	path = third_party/composable_kernel_tiled
-	url = https://github.com/asroy/ck_tile
-        branch = main
+	url = https://github.com/ROCmSoftwarePlatform/composable_kernel.git
+	branch = ck_tile/main
