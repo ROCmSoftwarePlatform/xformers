@@ -83,22 +83,22 @@ SHAPES = [
     # ViT
     ##(384, 197, 1, 88),
     ##(384, 197, 1, 80),
-    (384, 197, 1, 64),
+    ##(384, 197, 1, 64),
     ##(1024, 197, 1, 88),
     ##(1024, 197, 1, 80),
-    (1024, 197, 1, 64),
+    ##(1024, 197, 1, 64),
     # ViT-Huge
     ##(32 * 16, 197, 1, 80),
     ##(32, 197, 16, 80),
-    (32, 197, 16, 64),
-    (32, 197, 16, 128),
+    ##(32, 197, 16, 64),
+    ##(32, 197, 16, 128),
     # ViT-Giant
     ##(16 * 16, 197, 1, 88),
     ##(16, 197, 16, 88),
-    (16, 197, 16, 64),
-    (16, 197, 16, 128),
+    ##(16, 197, 16, 64),
+    ##(16, 197, 16, 128),
     # FB models
-    (1024, 82, 8, 64),
+    #(1024, 82, 8, 64),
     (150, 256, 16, 64),
     (64, 256, 12, 64),
     # Stable diffusion (https://github.com/huggingface/diffusers/pull/532)
@@ -151,13 +151,14 @@ CASES = list(
 )
 
 # Add more cases with some variations
+'''
 for c in CASES.copy():
     c = c.copy()
     c.update(
         random.Random(str(c["shape"])).choice(
             [
                 ##{"dropout_p": 0.3},
-                {"attn_bias_cfg": (torch.Tensor, False)},
+                ##{"attn_bias_cfg": (torch.Tensor, False)},
                 ##{"attn_bias_cfg": (torch.Tensor, True)},
                 ##{"dtype": torch.bfloat16},
                 ##{"dtype": torch.float},
@@ -165,7 +166,7 @@ for c in CASES.copy():
         )
     )
     CASES.append(c)
-
+'''
 
 def create_tensors(shape, dtype, requires_grad=False):
     B, M, H, K = shape

@@ -29,7 +29,6 @@ struct batched_infer_masktype_attnbias_dispatched
     using QDataType           = scalar_t;
     using KDataType           = scalar_t;
     using VDataType           = scalar_t;
-    using BiasDataType        = scalar_t;
     using SaccDataType        = float;    // data type for first gemm accumulation
     using SMPLComputeDataType = float;    // data type for reduction, softmax
     using PDataType           = scalar_t; // data type for A matrix of second gemm
@@ -87,7 +86,6 @@ struct batched_infer_masktype_attnbias_dispatched
                                                                   VDataType,
                                                                   SaccDataType,
                                                                   SMPLComputeDataType,
-                                                                  BiasDataType,
                                                                   PDataType,
                                                                   OaccDataType,
                                                                   ODataType,
@@ -97,50 +95,8 @@ struct batched_infer_masktype_attnbias_dispatched
             using FmhaPipeline =
                 ck::tile_program::block::BlockFmhaPipelineQRKSVS<FmhaPipelineProblem>;
 
-            if(param.M % FmhaShape::kM0 == 0 && param.N % FmhaShape::kN0 == 0)
-            {
-                constexpr bool MNeedPadding = false;
-                constexpr bool NNeedPadding = false;
-                using FmhaKernel            = FmhaFwdKernel<FmhaTilePartitioner,
-                                                 FmhaPipeline,
-                                                 FmhaEpilogue,
-                                                 MNeedPadding,
-                                                 NNeedPadding>;
-                RunWithKernel<FmhaKernel>(param, stream);
-            }
-            else if(param.M % FmhaShape::kM0 == 0 && param.N % FmhaShape::kN0 != 0)
-            {
-                constexpr bool MNeedPadding = false;
-                constexpr bool NNeedPadding = true;
-                using FmhaKernel            = FmhaFwdKernel<FmhaTilePartitioner,
-                                                 FmhaPipeline,
-                                                 FmhaEpilogue,
-                                                 MNeedPadding,
-                                                 NNeedPadding>;
-                RunWithKernel<FmhaKernel>(param, stream);
-            }
-            else if(param.M % FmhaShape::kM0 != 0 && param.N % FmhaShape::kN0 == 0)
-            {
-                constexpr bool MNeedPadding = true;
-                constexpr bool NNeedPadding = false;
-                using FmhaKernel            = FmhaFwdKernel<FmhaTilePartitioner,
-                                                 FmhaPipeline,
-                                                 FmhaEpilogue,
-                                                 MNeedPadding,
-                                                 NNeedPadding>;
-                RunWithKernel<FmhaKernel>(param, stream);
-            }
-            else if(param.M % FmhaShape::kM0 != 0 && param.N % FmhaShape::kN0 != 0)
-            {
-                constexpr bool MNeedPadding = true;
-                constexpr bool NNeedPadding = true;
-                using FmhaKernel            = FmhaFwdKernel<FmhaTilePartitioner,
-                                                 FmhaPipeline,
-                                                 FmhaEpilogue,
-                                                 MNeedPadding,
-                                                 NNeedPadding>;
-                RunWithKernel<FmhaKernel>(param, stream);
-            };
+            using FmhaKernel = FmhaFwdKernel<FmhaTilePartitioner, FmhaPipeline, FmhaEpilogue>;
+            RunWithKernel<FmhaKernel>(param, stream);
         });
     };
 
@@ -153,14 +109,6 @@ struct batched_infer_masktype_attnbias_dispatched
         constexpr ck::index_t kWarpPerCu    = 8; // 2 warps per SIMD
         constexpr ck::index_t kWarpPerBlock = kBlockSize.x / warpSize;
         constexpr ck::index_t kBlockPerCu   = kWarpPerCu / kWarpPerBlock;
-
-        std::optional<std::tuple<const void*, ck::index_t, ck::index_t, ck::index_t>> bias;
-
-        if(param.has_attn_bias)
-            bias = std::make_tuple(param.attn_bias_ptr,
-                                   param.attn_bias_strides[2],
-                                   param.attn_bias_strides[1],
-                                   param.attn_bias_strides[0]);
 
         auto kargs =
             FmhaKernel::MakeKargs(param.q_ptr,
@@ -183,8 +131,7 @@ struct batched_infer_masktype_attnbias_dispatched
                                   param.q_strides[0], // q, k, v, out tensor batch-dim stride
                                   param.k_strides[0],
                                   param.v_strides[0],
-                                  param.out_strides[0],
-                                  bias);
+                                  param.out_strides[0]);
 
         (void)launch_kernel<kBlockSize.x, kBlockPerCu>(
             StreamConfig{stream, false}, FmhaKernel{}, kGridSize, kBlockSize, 0, kargs);

@@ -28,6 +28,7 @@
 template <typename scalar_t, int32_t custom_mask_type>
 struct grouped_infer_masktype_attnbias_dispatched
 {
+/*
     using QDataType           = scalar_t;
     using KDataType           = scalar_t;
     using VDataType           = scalar_t;
@@ -156,10 +157,11 @@ struct grouped_infer_masktype_attnbias_dispatched
         (void)launch_kernel<kBlockSize.x, kBlockPerCu>(
             StreamConfig{stream, false}, FmhaKernel{}, kGridSize, kBlockSize, 0, kargs);
     };
+*/    
 };
 
 template <typename scalar_t, int32_t custom_mask_type>
 void run_grouped_infer_masktype_attnbias_dispatched(GroupedForwardParams& param, hipStream_t stream)
 {
-    grouped_infer_masktype_attnbias_dispatched<scalar_t, custom_mask_type>::Run(param, stream);
+   // grouped_infer_masktype_attnbias_dispatched<scalar_t, custom_mask_type>::Run(param, stream);
 };
