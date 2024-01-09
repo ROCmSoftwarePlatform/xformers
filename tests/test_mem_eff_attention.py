@@ -310,6 +310,114 @@ def ref_attention_bmhk(q, k, v, attn_bias, scale=None) -> torch.Tensor:
     return out.permute((0, 2, 1, 3))
 
 
+def ref_attention_splitk(q, k, v, attn_bias, scale=None, split_k=2) -> torch.Tensor:
+    assert q.ndim == 3
+
+    q = q.float()
+    k = k.float()
+    v = v.float()
+
+    if scale is None:
+        scale = torch.rsqrt(q.shape[-1])
+    q = q * scale
+
+    if attn_bias is not None:
+        if isinstance(attn_bias, xformers.ops.AttentionBias):
+            # Always create in B,H,Mq,Mk format
+            attn_bias_tensor = attn_bias.materialize(
+                (q.shape[0], 1, q.shape[1], k.shape[1]),
+                device=q.device,
+                dtype=torch.float32,
+            )
+        else:
+            attn_bias_tensor = attn_bias
+        if attn_bias_tensor.ndim == 4:
+            assert q.shape[0] == attn_bias_tensor.shape[0] * attn_bias_tensor.shape[1]
+            attn_bias_tensor = attn_bias_tensor.reshape(
+                [-1, *attn_bias_tensor.shape[2:]]
+            )
+
+    split_config = { "dim": -1, "split_size_or_sections": k.size(-1) // split_k}
+    k_split = torch.split(k, **split_config)
+    v_split = torch.split(v, **split_config)
+    attn_bias_split = torch.split(attn_bias_tensor, **split_config)
+
+    def compute_attention_split(q, k_slice, v_slice, attn_bias_slice):
+        p_slice = q @ k_slice.transpose(-2, -1)
+        p_slice += attn_bias_slice
+        m = p_slice.max(dim = -1)
+        s = torch.exp(p_slice - m[:, :, None])
+        l = torch.sum(s, dim = -1)
+        attn_slice = s @ v_slice
+        return {
+            "attn_slice": attn_slice,
+            "row_max": m,
+            "row_lse": l, 
+        }
+    
+    slices = map(lambda k, v, b: compute_attention_split(q, k, v, b), 
+        zip(k_split, v_split, attn_bias_split))
+    slices = list(slices)
+    out = torch.zero_like(q)
+
+    m_current_max = slices[0]["row_max"]
+    l_current_sum = torch.zero_like(slices[0]["row_lse"])
+
+    for s in slices:
+        (attn_slice, m, l) = s.values()
+        m_new = torch.max(m, m_current_max)
+        pick_new = m < m_current_max
+        pick_our = torch.logical_not(pick_new)
+
+        alpha = torch.exp(-torch.abs(m - m_current_max))
+
+        out = (pick_our * out + pick_new * attn_slice) * alpha
+        l_current_sum = (pick_our * l_current_sum + pick_new * l) * alpha
+        m_current_max = m_new
+    
+    out /= l_current_sum
+    return out
+
+
+def _rand_seqlens(
+    r: random.Random,
+    bs: int,
+    q_len: int,
+    kv_len: int,
+    more_keys_than_queries_per_block: bool,
+) -> Tuple[Sequence[int], Sequence[int]]:
+    """
+    Generates lists of lengths of query blocks and corresponding key blocks.
+    The total number of queries will be bs * q_len and the
+    total number of keys will be bs * kv_len.
+    """
+    if more_keys_than_queries_per_block:
+        assert kv_len >= q_len
+    q_len *= bs
+    kv_len *= bs
+    seqlens_q: List[int] = []
+    seqlens_k: List[int] = []
+
+    step_q = [max(1, q_len // 10), max(2, q_len // 2)]
+    step_k = [max(1, kv_len // 10), max(2, kv_len // 2)]
+    while sum(seqlens_q) < q_len and sum(seqlens_k) < kv_len:
+        num_queries = r.randrange(*step_q)
+        seqlens_q.append(num_queries)
+
+        if more_keys_than_queries_per_block:
+            # Must select at least `num_queries` keys
+            # But also leave enough keys for later
+            keys_left = kv_len - sum(seqlens_k, 0)
+            queries_left = q_len - sum(seqlens_q[:-1], 0)
+            assert keys_left >= queries_left
+            seqlens_k.append(num_queries + r.randrange(0, keys_left - queries_left))
+        else:
+            seqlens_k.append(r.randrange(*step_k))
+    seqlens_q[-1] = q_len - sum(seqlens_q[:-1])
+    seqlens_k[-1] = kv_len - sum(seqlens_k[:-1])
+    return seqlens_q, seqlens_k
+
+
 def _rand_partition(r: random.Random, total: int, n: int) -> List[int]:
     # returns list of n nonnegative integers summing to total
     idx = {0, total}
